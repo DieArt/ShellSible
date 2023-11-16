@@ -7,6 +7,7 @@ set -o noclobber # Prevent overwriting files.
 set -o pipefail   # Pipelines return the exit status of the last command in the pipe that returned a non-zero return value.
 set +o histexpand # Disable history expansion on interactive shell
 varCrash=false    # Used to prevent multiple crash reports.
+varTrace=false    # Used to prevent multiple trace reports.
 
 function ErrorHandler {
   local returnCode="${?}"
@@ -17,7 +18,7 @@ function ErrorHandler {
     }
     function _showPs {
       [[ -n $(command -v ps) ]] && {
-        while IFS='$\n' read -r line; do
+        while IFS=$'\n' read -r line; do
           printf "%s | ${line}\n" "$(date +%Y-%m-%dT%H:%M:%S%z)" >&2
         done < <(ps -f $$)
       }
@@ -27,7 +28,12 @@ function ErrorHandler {
     varCrash=true
   fi
   test ${returnCode} -ne 0 \
-    && GetCallStack "${returnCode}"
+    && {
+      if [[ ${varTrace} == 'false' ]]; then
+        GetCallStack "${returnCode}"
+        varTrace=true
+      fi
+    }
   exit "${returnCode}"
 }
 function GetCallStack {
@@ -48,4 +54,4 @@ function GetCallStack {
     fi
   done
 }
-trap 'ErrorHandler' ERR # Use ERR and EXIT traps all threads.
+trap 'ErrorHandler' ERR EXIT # Use ERR and EXIT traps all threads.
