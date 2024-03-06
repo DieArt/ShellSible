@@ -10,9 +10,9 @@ logToConsole="${logToConsole:=true}"
 logToFile="${logToFile:=false}"
 logToSyslog="${logToSyslog:=false}"
 #._func_================================================================================================================
-#._Log.Initialize()
+#.Log._Initialize()
 #.  Description : Initialize lib log.
-function _Log.Initialize {
+function ShellSible.Log._Initialize {
   declare -g logToConsole logToFile logToSyslog
   local logFileName logFilePath logFileDir # TODO: var logFileName is not used.
 
@@ -30,8 +30,8 @@ function _Log.Initialize {
       && {
         # Create log file and open file descriptor.
         # shellcheck disable=SC2188
-        > "${logFilePath}" \
-          && exec 5> "${logFilePath}"
+        >"${logFilePath}" \
+          && exec 5>"${logFilePath}"
       } \
       || {
         logToFile='false'
@@ -55,13 +55,11 @@ function _Log.Initialize {
 #.    [bool]logToConsole: Set as 'true' to log to stdout.
 #.    [bool]logToFile:    Set as 'true' to log to file.
 #.    [bool]logToSyslog:  Set as 'true' to log to syslog.
-function _Log.Log {
-  local logLevel message
-  logLevel="${1}"
-  message="${2}"
+function ShellSible.Log._Log {
+  local logLevel="${1}" logMessage="${2}"
+  local -A logDisplayLogLevel logLevelInt
 
-  # Transform log level from syslog format.
-  declare -A logDisplayLogLevel=(
+  logDisplayLogLevel=(
     ['emerg']="EMERG"
     ['alert']="ALERT"
     ['crit']="CRIT"
@@ -70,11 +68,9 @@ function _Log.Log {
     ['notice']="NOTICE"
     ['info']="INFO"
     ['debug']="DEBUG"
-    ['exec']="EXEC"
-  )
+  ) # Transform log level from syslog format.
 
-  # Transform log level to integer.
-  declare -A logLevelInt=(
+  logLevelInt=(
     ['emerg']=0
     ['alert']=1
     ['crit']=2
@@ -83,133 +79,114 @@ function _Log.Log {
     ['notice']=5
     ['info']=6
     ['debug']=7
-    ['exec']=6
-  )
+  ) # Transform log level to integer.
 
-  [[ "${logLevelInt[$logLevel]}" != 'EXEC' ]] || blank=' '
-
-  # If LOG_LEVEL is not set, set it to 'info'. # TODO: Refactor this.
   test -z "${LOG_LEVEL}" \
-    && LOG_LEVEL='info'
+    && LOG_LEVEL='info' # If LOG_LEVEL is not set, set it to 'info'. # TODO: Refactor this.
 
-  # Check if log level need to be logged. # TODO: Refactor this.
   test "${logLevelInt[$logLevel]}" -gt "${logLevelInt[$LOG_LEVEL]}" \
-    && return 0
+    && return 0 # Check if needed to log.
 
-  # Format log message.
-  message="[$(date +%Y-%m-%dT%H:%M:%S%z)][${logDisplayLogLevel[$logLevel]}][${FUNCNAME[2]}]${blank}${logMessage}"
+  logMessage="[$(date +%Y-%m-%dT%H:%M:%S%z)][${logDisplayLogLevel[$logLevel]}][${FUNCNAME[2]}] ${logMessage}"
 
-  # Log to syslog.
   test "${logToSyslog}" == 'true' \
-    && logger -t "${scriptName}" -p "${logLevel}" "${logMessage}"
+    && logger -t "${scriptName}" -p "${logLevel}" "${logMessage}" # Send message to syslog.
 
-  # Log to file.
   test "${logToFile}" == 'true' \
-    && echo "${logMessage}" >> "${scriptLogDir}${scriptName}.log"
+    && echo "${logMessage}" >>"${scriptLogDir}${scriptName}.log" # Write message to log file.
 
-  # Log to stdout.
   test "${logToConsole}" == 'true' \
-    && echo -e "${logMessage}"
+    && echo -e "${logMessage}" # Print message to stdout/console.
 
   return 0
 }
 #._func_================================================================================================================
-#. Log.Emerg(logMessage)
+#. ShellSible.Log.Emerg(logMessage)
 #. Description : Log message with emerg level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Emerg {
-  local message="${*}"
-  _Log.Log 'emerg' "${message}"
+function ShellSible.Log.Emerg {
+  local logMessage="${*}"
+  ShellSible.Log._Log 'emerg' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Alert(logMessage)
+#. ShellSible.Log.Alert(logMessage)
 #. Description : Log message with alert level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Alert {
+function ShellSible.Log.Alert {
   local logMessage="${*}"
-  _Log.Log 'alert' "${logMessage}"
+  ShellSible.Log._Log 'alert' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Crit(logMessage)
+#. ShellSible.Log.Crit(logMessage)
 #. Description : Log message with crit level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Crit {
+function ShellSible.Log.Crit {
   local logMessage="${*}"
-  _Log.Log 'crit' "${logMessage}"
+  ShellSible.Log._Log 'crit' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Err(logMessage)
+#. ShellSible.Log.Err(logMessage)
 #. Description : Log message with err level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Err {
+function ShellSible.Log.Err {
   local logMessage="${*}"
-  _Log.Log 'err' "${logMessage}"
+  ShellSible.Log._Log 'err' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Error(logMessage)
+#. ShellSible.Log.Error(logMessage)
 #. Description : Log message with error level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Error {
+function ShellSible.Log.Error {
   local logMessage="${*}"
-  _Log.Log 'err' "${logMessage}"
+  ShellSible.Log._Log 'err' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Warning(logMessage)
+#. ShellSible.Log.Warning(logMessage)
 #. Description : Log message with warning level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Warning {
+function ShellSible.Log.Warning {
   local logMessage="${*}"
-  _Log.Log 'warning' "${logMessage}"
+  ShellSible.Log._Log 'warning' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Notice(logMessage)
+#. ShellSible.Log.Notice(logMessage)
 #. Description : Log message with notice level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Notice {
+function ShellSible.Log.Notice {
   local logMessage="${*}"
-  _Log.Log 'notice' "${logMessage}"
+  ShellSible.Log._Log 'notice' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Info(logMessage)
+#. ShellSible.Log.Info(logMessage)
 #. Description : Log message with info level.
 #.
 #. Arguments :
 #.   - logMessage : message to log.
-function Log.Info {
+function ShellSible.Log.Info {
   local logMessage="${*}"
-  _Log.Log 'info' "${logMessage}"
+  ShellSible.Log._Log 'info' "${logMessage}"
 }
 #._func_================================================================================================================
-#. Log.Debug(logMessage)
+#. ShellSible.Log.Debug(logMessage)
 #. Description: Log message with debug level.
 #.
 #. Arguments:
 #.   - logMessage: message to log.
-function Log.Debug {
+function ShellSible.Log.Debug {
   local logMessage="${*}"
-  _Log.Log 'debug' "${logMessage}"
-}
-#._func_================================================================================================================
-#. Log.Exec(logMessage)
-#. Description: Log message with info level.
-#.
-#. Arguments:
-#.   - logMessage: message to log.
-function Log.Exec {
-  local logMessage="${*}"
-  _Log.Log 'exec' "${logMessage}"
+  ShellSible.Log._Log 'debug' "${logMessage}"
 }
